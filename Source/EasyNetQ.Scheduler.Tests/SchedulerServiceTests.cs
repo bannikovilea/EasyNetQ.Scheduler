@@ -5,6 +5,7 @@ using NSubstitute;
 using Xunit;
 using System.Collections.Generic;
 using EasyNetQ.ExternalScheduler;
+using Microsoft.Extensions.Logging;
 
 namespace EasyNetQ.Scheduler.Tests
 {
@@ -19,6 +20,7 @@ namespace EasyNetQ.Scheduler.Tests
         {
             bus = Substitute.For<IBus>();
             advancedBus = Substitute.For<IAdvancedBus>();
+            var logger = Substitute.For<ILogger<ScheduleRepository>>();
 
             bus.IsConnected.Returns(true);
             bus.Advanced.Returns(advancedBus);
@@ -33,7 +35,8 @@ namespace EasyNetQ.Scheduler.Tests
                     PublishIntervalSeconds = 1,
                     PurgeIntervalSeconds = 1,
                     EnableLegacyConventions = false
-                });
+                },
+                logger);
         }
 
         [Fact]

@@ -4,6 +4,8 @@ using Xunit;
 using System;
 using System.Text;
 using EasyNetQ.ExternalScheduler;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 
 namespace EasyNetQ.Scheduler.Tests
 {
@@ -13,13 +15,14 @@ namespace EasyNetQ.Scheduler.Tests
 
         public ScheduleRepositoryTests()
         {
+            var logger = Substitute.For<ILogger<ScheduleRepository>>();
             var configuration = new ScheduleRepositoryConfiguration
             {
                 ProviderName = "System.Data.SqlClient",
                 ConnectionString = "Data Source=localhost;Initial Catalog=EasyNetQ.Scheduler;Integrated Security=SSPI;",
                 PurgeBatchSize = 100
             };
-            scheduleRepository = new ScheduleRepository(configuration, () => DateTime.UtcNow);
+            scheduleRepository = new ScheduleRepository(configuration, () => DateTime.UtcNow, logger);
         }
 
         [Fact(Skip = "Required a database")]
