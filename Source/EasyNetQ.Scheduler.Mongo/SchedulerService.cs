@@ -2,7 +2,7 @@
 using System.Threading;
 using EasyNetQ.SystemMessages;
 using EasyNetQ.Topology;
-using log4net;
+using Microsoft.Extensions.Logging;
 
 namespace EasyNetQ.Scheduler.Mongo
 {
@@ -10,23 +10,24 @@ namespace EasyNetQ.Scheduler.Mongo
     {
         private readonly IBus bus;
         private readonly ISchedulerServiceConfiguration configuration;
-        private readonly ILog logger = LogManager.GetLogger(typeof(SchedulerService));
+        private readonly ILogger<SchedulerService> logger;
         private readonly IScheduleRepository scheduleRepository;
         private Timer handleTimeoutTimer;
         private Timer publishTimer;
 
         public SchedulerService(
-            IBus bus, IScheduleRepository scheduleRepository, ISchedulerServiceConfiguration configuration
+            IBus bus, IScheduleRepository scheduleRepository, ISchedulerServiceConfiguration configuration, ILogger<SchedulerService> logger
         )
         {
             this.bus = bus;
             this.scheduleRepository = scheduleRepository;
             this.configuration = configuration;
+            this.logger = logger;
         }
 
         public void Start()
         {
-            logger.Debug("Starting SchedulerService");
+            logger.LogDebug("Starting SchedulerService");
             bus.Subscribe<ScheduleMe>(configuration.SubscriptionId, OnMessage);
             bus.Subscribe<UnscheduleMe>(configuration.SubscriptionId, OnMessage);
             publishTimer = new Timer(OnPublishTimerTick, null, TimeSpan.Zero, configuration.PublishInterval);
@@ -36,7 +37,7 @@ namespace EasyNetQ.Scheduler.Mongo
 
         public void Stop()
         {
-            logger.Debug("Stopping SchedulerService");
+            logger.LogDebug("Stopping SchedulerService");
             if (publishTimer != null) publishTimer.Dispose();
             if (handleTimeoutTimer != null) handleTimeoutTimer.Dispose();
             if (bus != null) bus.Dispose();
@@ -44,7 +45,7 @@ namespace EasyNetQ.Scheduler.Mongo
 
         public void OnHandleTimeoutTimerTick(object state)
         {
-            logger.Debug("Handling failed messages");
+            logger.LogDebug("Handling failed messages");
             scheduleRepository.HandleTimeout();
         }
 
@@ -62,7 +63,7 @@ namespace EasyNetQ.Scheduler.Mongo
                     var exchangeName = schedule.Exchange ?? schedule.BindingKey;
                     var routingKey = schedule.RoutingKey ?? schedule.BindingKey;
                     var properties = schedule.BasicProperties ?? new MessageProperties {Type = schedule.BindingKey};
-                    logger.DebugFormat("Publishing Scheduled Message with to exchange '{0}'", exchangeName);
+                    logger.LogDebug("Publishing Scheduled Message with to exchange '{0}'", exchangeName);
                     var exchange =
                         bus.Advanced.ExchangeDeclare(exchangeName, schedule.ExchangeType ?? ExchangeType.Topic);
                     bus.Advanced.Publish(
@@ -77,19 +78,19 @@ namespace EasyNetQ.Scheduler.Mongo
             }
             catch (Exception exception)
             {
-                logger.ErrorFormat("Error in schedule pol\r\n{0}", exception);
+                logger.LogError("Error in schedule pol\r\n{0}", exception);
             }
         }
 
         private void OnMessage(UnscheduleMe message)
         {
-            logger.Debug("Got Unschedule Message");
+            logger.LogDebug("Got Unschedule Message");
             scheduleRepository.Cancel(message.CancellationKey);
         }
 
         private void OnMessage(ScheduleMe message)
         {
-            logger.Debug("Got Schedule Message");
+            logger.LogDebug("Got Schedule Message");
             scheduleRepository.Store(new Schedule
             {
                 Id = Guid.NewGuid(),

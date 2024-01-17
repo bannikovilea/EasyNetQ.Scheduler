@@ -3,7 +3,7 @@ using System.Transactions;
 using EasyNetQ.Topology;
 using System.Collections.Concurrent;
 using EasyNetQ.ExternalScheduler;
-using log4net;
+using Microsoft.Extensions.Logging;
 
 namespace EasyNetQ.Scheduler
 {
@@ -16,13 +16,12 @@ namespace EasyNetQ.Scheduler
 
     public class SchedulerService : ISchedulerService
     {
-        private readonly ILog log = LogManager.GetLogger(typeof(ScheduleRepository));
-
         private const string schedulerSubscriptionId = "schedulerSubscriptionId";
 
         private readonly IBus bus;
         private readonly IScheduleRepository scheduleRepository;
         private readonly SchedulerServiceConfiguration configuration;
+        private readonly ILogger<ScheduleRepository> log;
 
         private System.Threading.Timer publishTimer;
         private System.Threading.Timer purgeTimer;
@@ -30,16 +29,18 @@ namespace EasyNetQ.Scheduler
         public SchedulerService(
             IBus bus,
             IScheduleRepository scheduleRepository,
-            SchedulerServiceConfiguration configuration)
+            SchedulerServiceConfiguration configuration,
+            ILogger<ScheduleRepository> log)
         {
             this.bus = bus;
             this.scheduleRepository = scheduleRepository;
             this.configuration = configuration;
+            this.log = log;
         }
 
         public void Start()
         {
-            log.DebugFormat("Starting SchedulerService");
+            log.LogDebug("Starting SchedulerService");
             bus.Subscribe<ScheduleMe>(schedulerSubscriptionId, OnMessage);
             bus.Subscribe<UnscheduleMe>(schedulerSubscriptionId, OnMessage);
 
@@ -49,7 +50,7 @@ namespace EasyNetQ.Scheduler
 
         public void Stop()
         {
-            log.DebugFormat("Stopping SchedulerService");
+            log.LogDebug("Stopping SchedulerService");
             if (publishTimer != null)
             {
                 publishTimer.Dispose();
@@ -66,13 +67,13 @@ namespace EasyNetQ.Scheduler
 
         public void OnMessage(ScheduleMe scheduleMe)
         {
-            log.DebugFormat("Got Schedule Message");
+            log.LogDebug("Got Schedule Message");
             scheduleRepository.Store(scheduleMe);
         }
 
         public void OnMessage(UnscheduleMe unscheduleMe)
         {
-            log.DebugFormat("Got Unschedule Message");
+            log.LogDebug("Got Unschedule Message");
             scheduleRepository.Cancel(unscheduleMe);
         }
 
@@ -82,7 +83,7 @@ namespace EasyNetQ.Scheduler
             {
                 if (!bus.IsConnected)
                 {
-                    log.Info("Not connected");
+                    log.LogInformation("Not connected");
                     return;
                 }
 
@@ -90,7 +91,7 @@ namespace EasyNetQ.Scheduler
                 var declaredExchanges = new ConcurrentDictionary<Tuple<string, string>, IExchange>();
                 Func<Tuple<string, string>, IExchange> declareExchange = exchangeNameType =>
                 {
-                    log.DebugFormat("Declaring exchange {0}, {1}", exchangeNameType.Item1, exchangeNameType.Item2);
+                    log.LogDebug("Declaring exchange {0}, {1}", exchangeNameType.Item1, exchangeNameType.Item2);
                     return bus.Advanced.ExchangeDeclare(exchangeNameType.Item1, exchangeNameType.Item2);
                 };
 
@@ -101,7 +102,7 @@ namespace EasyNetQ.Scheduler
                     foreach (var scheduledMessage in scheduledMessages)
                     {
                         // Binding key fallback is only provided here for backwards compatibility, will be removed in the future
-                        log.DebugFormat("Publishing Scheduled Message with Routing Key: '{0}'", scheduledMessage.BindingKey);
+                        log.LogDebug("Publishing Scheduled Message with Routing Key: '{0}'", scheduledMessage.BindingKey);
 
                         var exchangeName = scheduledMessage.Exchange ?? scheduledMessage.BindingKey;
                         var exchangeType = scheduledMessage.ExchangeType ?? ExchangeType.Topic;
@@ -128,7 +129,7 @@ namespace EasyNetQ.Scheduler
             }
             catch (Exception exception)
             {
-                log.ErrorFormat("Error in schedule poll\r\n{0}", exception);
+                log.LogError("Error in schedule poll\r\n{0}", exception);
             }
         }
 
@@ -140,7 +141,7 @@ namespace EasyNetQ.Scheduler
             }
             catch (Exception exception)
             {
-                log.ErrorFormat("Error in schedule purge\r\n{0}", exception);
+                log.LogError("Error in schedule purge\r\n{0}", exception);
             }
         }
     }

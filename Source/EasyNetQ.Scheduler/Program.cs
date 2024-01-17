@@ -1,5 +1,4 @@
 ﻿using System.Data.Common;
-using log4net.Config;
 using Microsoft.Data.SqlClient;
 using Topshelf;
 
@@ -9,7 +8,6 @@ namespace EasyNetQ.Scheduler
     {
         static void Main()
         {
-            XmlConfigurator.Configure();
             RegisterDbProviderFactories();
 
             HostFactory.Run(hostConfiguration =>

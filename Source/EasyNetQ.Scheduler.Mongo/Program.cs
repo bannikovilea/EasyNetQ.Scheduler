@@ -1,5 +1,4 @@
-﻿using log4net.Config;
-using Topshelf;
+﻿using Topshelf;
 
 namespace EasyNetQ.Scheduler.Mongo
 {
@@ -7,8 +6,6 @@ namespace EasyNetQ.Scheduler.Mongo
     {
         private static void Main()
         {
-            XmlConfigurator.Configure();
-
             HostFactory.Run(hostConfiguration =>
             {
                 hostConfiguration.EnableServiceRecovery(serviceRecoveryConfiguration =>

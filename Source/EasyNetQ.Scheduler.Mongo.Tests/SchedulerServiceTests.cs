@@ -2,6 +2,7 @@
 using NSubstitute;
 using Xunit;
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace EasyNetQ.Scheduler.Mongo.Tests
 {
@@ -11,6 +12,7 @@ namespace EasyNetQ.Scheduler.Mongo.Tests
         {
             bus = Substitute.For<IBus>();
             advancedBus = Substitute.For<IAdvancedBus>();
+            var logger = Substitute.For<ILogger<SchedulerService>>();
 
             bus.IsConnected.Returns(true);
             bus.Advanced.Returns(advancedBus);
@@ -27,7 +29,8 @@ namespace EasyNetQ.Scheduler.Mongo.Tests
                         SubscriptionId = "Scheduler",
                         PublishMaxSchedules = 2,
                         EnableLegacyConventions = false
-                    });
+                    },
+                logger);
         }
 
         private SchedulerService schedulerService;
